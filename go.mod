@@ -1,4 +1,4 @@
-module errkit
+module github.com/FarHowl/errkit
 
 go 1.22.5
 
