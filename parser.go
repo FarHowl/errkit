@@ -2,32 +2,20 @@ package errkit
 
 import (
 	"encoding/json"
-	"fmt"
-
-	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/proto"
 )
 
-func isGrpcErr(errBytes []byte) (*status.Status, bool) {
-	st := &status.Status{}
-	err := proto.Unmarshal(errBytes, st.Proto())
-	if err != nil {
-		return nil, false
+// Dictionaries of JSON fields`s names. Are used to parse different keys from the received JSON error
+var (
+	codeFieldDictionary = []string{
+		"status", "code",
 	}
-	return st, true
-}
-
-func parseGrpcError(grpcErr *status.Status) (int, string, map[string]interface{}, error) {
-	metaInfo := make(map[string]interface{})
-	details := grpcErr.Details()
-	if len(details) > 0 {
-		for i, detail := range details {
-			metaInfo[fmt.Sprintf("detail_%d", i)] = detail
-		}
+	errorFieldDictionary = []string{
+		"error", "message",
 	}
-
-	return int(grpcErr.Code()), grpcErr.Message(), metaInfo, nil
-}
+	metaFieldDictionary = []string{
+		"meta", "meta_info",
+	}
+)
 
 func isJsonErr(errBytes []byte) (map[string]interface{}, bool) {
 	var parsedError map[string]interface{}
@@ -38,23 +26,24 @@ func isJsonErr(errBytes []byte) (map[string]interface{}, bool) {
 	return parsedError, true
 }
 
-func parseJsonErr(jsonErr map[string]interface{}) (int, string, map[string]interface{}, error) {
-	status, exists := getJsonCode(jsonErr, "status", "code")
+// Tries to retrieve `code` and `error`. Uses customizable dictionaries
+func parseJsonErr(jsonErr map[string]interface{}) (int, string, map[string]interface{}) {
+	status, exists := getJsonCode(jsonErr, codeFieldDictionary...)
 	if !exists {
 		status = 520
 	}
-	errMessage, exists := getJsonErrMessage(jsonErr, "error", "message")
+	errMessage, exists := getJsonErrMessage(jsonErr, errorFieldDictionary...)
 	if !exists {
 		errMessage = "couldn`t parse error form another service"
 	}
-	metaInfo, exists := getJsonMetaInfo(jsonErr, "meta", "meta_info")
+	metaInfo, exists := getJsonMetaInfo(jsonErr, metaFieldDictionary...)
 	if !exists {
 		metaInfo = make(map[string]interface{})
 	}
-
-	return status, errMessage, metaInfo, nil
+	return status, errMessage, metaInfo
 }
 
+// Tries to get HTTP-code from received JSON error
 func getJsonCode(parsedMessage map[string]interface{}, keys ...string) (int, bool) {
 	for _, key := range keys {
 		if value, exists := parsedMessage[key]; exists {
@@ -72,6 +61,7 @@ func getJsonCode(parsedMessage map[string]interface{}, keys ...string) (int, boo
 	return 0, false
 }
 
+// Tries to get message from received JSON error
 func getJsonErrMessage(parsedMessage map[string]interface{}, keys ...string) (string, bool) {
 	for _, key := range keys {
 		if value, exists := parsedMessage[key]; exists {
@@ -83,6 +73,7 @@ func getJsonErrMessage(parsedMessage map[string]interface{}, keys ...string) (st
 	return "", false
 }
 
+// Tries to get meta information from received JSON error
 func getJsonMetaInfo(parsedMessage map[string]interface{}, keys ...string) (map[string]interface{}, bool) {
 	for _, key := range keys {
 		if value, exists := parsedMessage[key]; exists {
