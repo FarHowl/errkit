@@ -1,4 +1,4 @@
-module github.com/FarHowl/errkit
+module searchgit.wb.ru/wbx-search/conversion/aggregator/pkg/errkit
 
 go 1.22.2
 

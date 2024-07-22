@@ -2,7 +2,6 @@ package errkit
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"testing"
 
@@ -64,42 +63,12 @@ func TestUnknownMarshalJSON(t *testing.T) {
 	assert.Equal(t, 520, differentErrCode)
 }
 
-func BenchmarkNewDefaultError(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		errors.New("Test error message")
+func TestByteMessage(t *testing.T) {
+	responseErr := "some error"
+	responseErrBytes := make([]byte, 0)
+	for _, r := range responseErr {
+		responseErrBytes = append(responseErrBytes, byte(r))
 	}
-}
-
-func BenchmarkMarshalJsonDefaultError(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		_, err := json.Marshal(errors.New("Test error message"))
-		if err != nil {
-			b.Fail()
-		}
-	}
-}
-
-func BenchmarkNewError(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		NewError("Test error message")
-	}
-}
-
-func BenchmarkNewErrorWithOptions(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		NewError("Test error message").WithCode(500).WithMetaInfo("service", "normalizer")
-	}
-}
-
-func BenchmarkMarshalJSON(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		MarshalJSON(NewError("Test error message"))
-	}
-}
-
-func BenchmarkNewErrorFromJSON(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		errData, _ := MarshalJSON(NewError("Test error message"))
-		NewError(errData)
-	}
+	actualErr := NewError(responseErrBytes)
+	assert.Equal(t, responseErr, actualErr.ErrorMessage)
 }

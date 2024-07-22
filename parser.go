@@ -1,32 +1,36 @@
 package errkit
 
-import (
-	"encoding/json"
+// These dictionaries allow to parse error received via JSON and inherit its fields
+var (
+	codeFieldDictionary  = []string{"status", "code"}
+	errorFieldDictionary = []string{"error", "message"}
+	metaFieldDictionary  = []string{"meta", "meta_info"}
 )
 
-// Dictionaries of JSON fields`s names. Are used to parse different keys from the received JSON error
-var (
-	codeFieldDictionary = []string{
-		"status", "code",
-	}
-	errorFieldDictionary = []string{
-		"error", "message",
-	}
-	metaFieldDictionary = []string{
-		"meta", "meta_info",
-	}
-)
+// Allows to choose code dictionary that will be used when calling NewError() on received JSON error
+func SetCodeFieldDictionary(newDictionary []string) {
+	codeFieldDictionary = newDictionary
+}
+
+// Allows to choose error dictionary that will be used when calling NewError() on received JSON error
+func SetErrorFieldDictionary(newDictionary []string) {
+	errorFieldDictionary = newDictionary
+}
+
+// Allows to choose meta dictionary that will be used when calling NewError() on received JSON error
+func SetMetaFieldDictionary(newDictionary []string) {
+	metaFieldDictionary = newDictionary
+}
 
 func isJsonErr(errBytes []byte) (map[string]interface{}, bool) {
 	var parsedError map[string]interface{}
-	err := json.Unmarshal(errBytes, &parsedError)
+	err := jsonDecoder(errBytes, &parsedError)
 	if err != nil {
 		return nil, false
 	}
 	return parsedError, true
 }
 
-// Tries to retrieve `code` and `error`. Uses customizable dictionaries
 func parseJsonErr(jsonErr map[string]interface{}) (int, string, map[string]interface{}) {
 	status, exists := getJsonCode(jsonErr, codeFieldDictionary...)
 	if !exists {
@@ -40,10 +44,10 @@ func parseJsonErr(jsonErr map[string]interface{}) (int, string, map[string]inter
 	if !exists {
 		metaInfo = make(map[string]interface{})
 	}
+
 	return status, errMessage, metaInfo
 }
 
-// Tries to get HTTP-code from received JSON error
 func getJsonCode(parsedMessage map[string]interface{}, keys ...string) (int, bool) {
 	for _, key := range keys {
 		if value, exists := parsedMessage[key]; exists {
@@ -61,7 +65,6 @@ func getJsonCode(parsedMessage map[string]interface{}, keys ...string) (int, boo
 	return 0, false
 }
 
-// Tries to get message from received JSON error
 func getJsonErrMessage(parsedMessage map[string]interface{}, keys ...string) (string, bool) {
 	for _, key := range keys {
 		if value, exists := parsedMessage[key]; exists {
@@ -73,7 +76,6 @@ func getJsonErrMessage(parsedMessage map[string]interface{}, keys ...string) (st
 	return "", false
 }
 
-// Tries to get meta information from received JSON error
 func getJsonMetaInfo(parsedMessage map[string]interface{}, keys ...string) (map[string]interface{}, bool) {
 	for _, key := range keys {
 		if value, exists := parsedMessage[key]; exists {
